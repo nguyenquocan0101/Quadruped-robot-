@@ -5,7 +5,8 @@
 #include <WiFi.h>
 #endif
 #include <WiFiClient.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
+
 #include "minikame.h"
 
 

@@ -1,8 +1,9 @@
 #ifndef minikame_h
 #define minikame_h
 
-#include <ESP32Servo.h>
-#include <Octosnake.h>
+#include <ESP32Servo.h>   // ✅
+
+#include "Octosnake.h"
 
 class MiniKame{
 public:

@@ -2,7 +2,7 @@
 #define octosnake_h
 
 #include <Arduino.h>
-#include <ESP32Servo.h>
+#include <ESP32Servo.h>   // ✅
 
 
 #ifndef PI

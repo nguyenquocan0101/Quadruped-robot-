@@ -4,7 +4,8 @@
     Octosnake example, it moves a servo
 */
 
-#include <Servo.h>
+#include <ESP32Servo.h>
+
 #include <Octosnake.h>
 
 

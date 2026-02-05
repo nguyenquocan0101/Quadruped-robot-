@@ -1,5 +1,4 @@
 #include "minikame.h"
-#include <ESP32Servo.h>
 
 
 void MiniKame::init(){
