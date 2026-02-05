@@ -3,6 +3,9 @@
 
 void MiniKame::init(){
     // Map between servos and board pins
+    // Platform-specific pin mapping. Adjust the ESP32 pins below to match
+    // your wiring. For ESP8266 (NodeMCU) the Dn macros are used.
+#if defined(ARDUINO_ARCH_ESP8266)
     board_pins[0] = D1; // Servo S0
     board_pins[1] = D4; // Servo S1
     board_pins[2] = D8; // Servo S2
@@ -11,6 +14,28 @@ void MiniKame::init(){
     board_pins[5] = D5; // Servo S5
     board_pins[6] = D2; // Servo S6
     board_pins[7] = D3; // Servo S7
+#elif defined(ARDUINO_ARCH_ESP32)
+    // Default ESP32 GPIO mapping (example). Change these to match your
+    // servo driver / wiring. Avoid using boot or flash pins (GPIO6..GPIO11).
+    board_pins[0] = 2;  // Servo S0
+    board_pins[1] = 4;  // Servo S1
+    board_pins[2] = 16; // Servo S2
+    board_pins[3] = 17; // Servo S3
+    board_pins[4] = 18; // Servo S4
+    board_pins[5] = 19; // Servo S5
+    board_pins[6] = 21; // Servo S6
+    board_pins[7] = 22; // Servo S7
+#else
+    // Fallback: try to use numeric pins if Dn macros are not available
+    board_pins[0] = 5;
+    board_pins[1] = 2;
+    board_pins[2] = 15;
+    board_pins[3] = 12;
+    board_pins[4] = 13;
+    board_pins[5] = 14;
+    board_pins[6] = 4;
+    board_pins[7] = 0;
+#endif
 
     // Trim values for zero position calibration.
     trim[0] = 0;
