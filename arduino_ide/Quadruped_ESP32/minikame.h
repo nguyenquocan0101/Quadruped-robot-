@@ -1,8 +1,8 @@
 #ifndef minikame_h
 #define minikame_h
 
-#include <ESP32Servo.h>   // ✅
-
+#include <Wire.h>
+#include <Adafruit_PWMServoDriver.h>
 #include "Octosnake.h"
 
 class MiniKame{
@@ -24,15 +24,17 @@ public:
     void zero();
     void frontBack(float steps, int period);
 
+    void testLeg(int leg_id);
+
     void setServo(int id, float target);
     void reverseServo(int id);
     float getServo(int id);
     void moveServos(int time, float target[8]);
 
 private:
-    Oscillator oscillator[8];
-    Servo servo[8];
-    int board_pins[8];
+    Adafruit_PWMServoDriver pwm; // Đối tượng điều khiển PCA9685
+    Oscillator oscillator[8]; // QUAN TRỌNG: Khai báo lại Oscillator
+    
     int trim[8];
     bool reverse[8];
     unsigned long _init_time;
@@ -41,7 +43,6 @@ private:
     float _increment[8];
     float _servo_position[8];
 
-    int angToUsec(float value);
     void execute(float steps, int period[8], int amplitude[8], int offset[8], int phase[8]);
 };
 

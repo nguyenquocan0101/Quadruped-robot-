@@ -1,41 +1,12 @@
 #include "minikame.h"
-
-
+#include "Octosnake.h"
 void MiniKame::init(){
-    // Map between servos and board pins
-    // Platform-specific pin mapping. Adjust the ESP32 pins below to match
-    // your wiring. For ESP8266 (NodeMCU) the Dn macros are used.
-#if defined(ARDUINO_ARCH_ESP8266)
-    board_pins[0] = D1; // Servo S0
-    board_pins[1] = D4; // Servo S1
-    board_pins[2] = D8; // Servo S2
-    board_pins[3] = D6; // Servo S3
-    board_pins[4] = D7; // Servo S4
-    board_pins[5] = D5; // Servo S5
-    board_pins[6] = D2; // Servo S6
-    board_pins[7] = D3; // Servo S7
-#elif defined(ARDUINO_ARCH_ESP32)
-    // Default ESP32 GPIO mapping (example). Change these to match your
-    // servo driver / wiring. Avoid using boot or flash pins (GPIO6..GPIO11).
-    board_pins[0] = 2;  // Servo S0
-    board_pins[1] = 4;  // Servo S1
-    board_pins[2] = 16; // Servo S2
-    board_pins[3] = 17; // Servo S3
-    board_pins[4] = 18; // Servo S4
-    board_pins[5] = 19; // Servo S5
-    board_pins[6] = 21; // Servo S6
-    board_pins[7] = 22; // Servo S7
-#else
-    // Fallback: try to use numeric pins if Dn macros are not available
-    board_pins[0] = 5;
-    board_pins[1] = 2;
-    board_pins[2] = 15;
-    board_pins[3] = 12;
-    board_pins[4] = 13;
-    board_pins[5] = 14;
-    board_pins[6] = 4;
-    board_pins[7] = 0;
-#endif
+    // Khoi tao PCA9685
+    pwm = Adafruit_PWMServoDriver(0x40); // Dia chi mac dinh 0x40
+    pwm.begin();
+    pwm.setOscillatorFrequency(27000000);
+    pwm.setPWMFreq(50);  // 50Hz updates
+    delay(10);
 
     // Trim values for zero position calibration.
     trim[0] = 0;
@@ -53,7 +24,6 @@ void MiniKame::init(){
     // Init an oscillator for each servo
     for(int i=0; i<8; i++){
         oscillator[i].start();
-        servo[i].attach(board_pins[i]);
     }
     zero();
 }
@@ -66,7 +36,7 @@ void MiniKame::turnR(float steps, int T=600){
     int period[] = {T, T, T, T, T, T, T, T};
     int amplitude[] = {x_amp,x_amp,z_amp,z_amp,x_amp,x_amp,z_amp,z_amp};
     int offset[] = {90+ap,90-ap,90-hi,90+hi,90-ap,90+ap,90+hi,90-hi};
-    int phase[] = {0,180,90,90,180,0,90,90};
+    int phase[] = {180,0,90,90,0,180,90,90};
 
     execute(steps, period, amplitude, offset, phase);
 }
@@ -79,7 +49,7 @@ void MiniKame::turnL(float steps, int T=600){
     int period[] = {T, T, T, T, T, T, T, T};
     int amplitude[] = {x_amp,x_amp,z_amp,z_amp,x_amp,x_amp,z_amp,z_amp};
     int offset[] = {90+ap,90-ap,90-hi,90+hi,90-ap,90+ap,90+hi,90-hi};
-    int phase[] = {180,0,90,90,0,180,90,90};
+    int phase[] = {0,180,90,90,180,0,90,90};
 
     execute(steps, period, amplitude, offset, phase);
 }
@@ -280,9 +250,61 @@ void MiniKame::hello(){
     moveServos(500, goingUp);
     delay(200);
 
+
+
 }
 
+void MiniKame::testLeg(int leg_id){
+    // Map leg_id to Hip and Knee servos
+    // Leg 0 (FL): Hip 0, Knee 4
+    // Leg 1 (FR): Hip 1, Knee 5
+    // Leg 2 (BL): Hip 3, Knee 6  <-- Based on walk logic
+    // Leg 3 (BR): Hip 2, Knee 7  <-- Based on walk logic
 
+    int hip_id = -1;
+    int knee_id = -1;
+
+    switch(leg_id) {
+        case 0: hip_id = 0; knee_id = 4; break;
+        case 1: hip_id = 1; knee_id = 5; break;
+        case 2: hip_id = 3; knee_id = 6; break; // Check physical wiring if this is swapped
+        case 3: hip_id = 2; knee_id = 7; break; // Check physical wiring if this is swapped
+        default: return; 
+    }
+
+    // Movement: Lift leg up (Knee), wiggle Hip, put down
+    
+    // 1. Lift Knee
+    // Usually Knee > 90 is UP or < 90 is UP depending on side.
+    // Based on 'jump' -> 90-hi and 90+hi.
+    // Let's assume 45 degree movement.
+    
+    float up_pos = 45; // Test value
+    
+    // Knee 4 (FL): 90+up?
+    // Knee 5 (FR): 90-up?
+    
+    // From minikame.cpp 'jump':
+    // ap=20, hi=35.
+    // jump moves all legs.
+    
+    // Let's just try moving the knee to 135 then back to 90.
+    
+    setServo(knee_id, 130);
+    delay(150);
+    
+    // Wiggle Hip
+    setServo(hip_id, 110);
+    delay(150);
+    setServo(hip_id, 70);
+    delay(150);
+    setServo(hip_id, 90);
+    delay(150);
+    
+    // Put down
+    setServo(knee_id, 90);
+    delay(150);
+}
 
 void MiniKame::jump(){
     float sentado[]={90+15,90-15,90-65,90+65,90+20,90-20,90+10,90-10};
@@ -314,19 +336,34 @@ void MiniKame::reverseServo(int id){
         reverse[id] = 1;
 }
 
-
+// HÀM QUAN TRỌNG: Gửi tín hiệu PWM xuống PCA9685
 void MiniKame::setServo(int id, float target){
-    if (!reverse[id])
-        servo[id].writeMicroseconds(angToUsec(target+trim[id]));
-    else
-        servo[id].writeMicroseconds(angToUsec(180-(target+trim[id])));
+    float val = target + trim[id];
+    
+    if (reverse[id]) {
+        val = 180 - val;
+    }
+
+    // Giới hạn góc từ 0 đến 180
+    if (val < 0) val = 0;
+    if (val > 180) val = 180;
+
+    // Chuyển đổi độ sang xung PWM
+    // 0 deg = 544us, 180 deg = 2400us
+    int us = map((int)val, 0, 180, 544, 2400); 
+    
+    // Convert Microseconds to PCA9685 Ticks (12-bit, 50Hz)
+    // 1 chu kỳ = 20000us. 1 tick = 20000 / 4096 = ~4.88us
+    int tick = (float)us * 4096.0 / 20000.0;
+    
+    pwm.setPWM(id, 0, tick);
+    
     _servo_position[id] = target;
 }
 
 float MiniKame::getServo(int id){
     return _servo_position[id];
 }
-
 
 void MiniKame::moveServos(int time, float target[8]) {
     if (time>10){
@@ -365,8 +402,4 @@ void MiniKame::execute(float steps, int period[8], int amplitude[8], int offset[
         }
         yield();
     }
-}
-
-int MiniKame::angToUsec(float value){
-    return value/180 * (MAX_PULSE_WIDTH-MIN_PULSE_WIDTH) + MIN_PULSE_WIDTH;
 }
